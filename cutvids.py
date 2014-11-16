@@ -50,6 +50,8 @@ def parse_tokens(line):
 def parse_video_tasks(fn):
     with io.open(fn, encoding='utf-8') as inf:
         for line in inf:
+            if not line.strip() or line.startswith('#'):
+                break
             tokens = list(parse_tokens(line))
             assert 2 <= len(tokens) <= 4
             input_files = tokens[0].split('+')
