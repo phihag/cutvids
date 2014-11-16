@@ -138,7 +138,11 @@ def is_cut(outdir, vt):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('index_file', metavar='FILE')
+    parser.add_argument(
+        'index_file', metavar='FILE',
+        help='Description of videos, one per line. '
+             'Format: Source-videos(separated with +) "destination video name"'
+             ' [offset in first video, - for none] [end offset in last video]')
     parser.add_argument(
         '--dry-run', action='store_true',
         help='Print commands instead of executing them')
@@ -150,7 +154,8 @@ def main():
         help='Upload videos after cutting them')
     parser.add_argument(
         '--upload-config', metavar='FILE',
-        help='Configuration file for the upload.')
+        help='JSON configuration file for the upload. '
+             'A dictionary with the keys email, password and category.')
     args = parser.parse_args()
 
     cwd = os.getcwd()
