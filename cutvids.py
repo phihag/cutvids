@@ -67,8 +67,9 @@ def cutvid_commands(vt, indir, outdir):
     try:
         if len(input_files) == 1 and vt.start and vt.end:
             yield [
-                'ffmpeg', '-i', input_files[0], '-y', '-c', 'copy',
+                'ffmpeg', '-i', input_files[0], '-y',
                 '-ss', '%d' % vt.start, '-t', '%d' % (vt.end - vt.start),
+                '-c', 'copy', '-f', 'mp4',
                 output_fn + '.part']
             yield [
                 'mv', '--', output_fn + '.part', output_fn,
@@ -82,8 +83,9 @@ def cutvid_commands(vt, indir, outdir):
             tmpfiles.append(tmpfile)
             os.close(tmph)
             yield [
-                'ffmpeg', '-i', input_files[0], '-y', '-c', 'copy',
+                'ffmpeg', '-i', input_files[0], '-y',
                 '-ss', '%d' % vt.start,
+                '-c', 'copy', '-f', 'mp4',
                 tmpfile,
             ]
             input_files[0] = tmpfile
