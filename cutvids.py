@@ -16,7 +16,7 @@ import tempfile
 
 
 VideoTask = collections.namedtuple(
-    'VideoTask', ('input_files', 'output_file', 'start', 'end'))
+    'VideoTask', ('input_files', 'output_file', 'start', 'end', 'description'))
 
 
 class FileNotFoundError(BaseException):
@@ -56,11 +56,21 @@ def parse_video_tasks(fn):
             if not line.strip() or line.startswith('#'):
                 break
             tokens = list(parse_tokens(line))
-            assert 2 <= len(tokens) <= 4
+            assert 2 <= len(tokens) <= 5
             input_files = tokens[0].split('+')
+            output_file = tokens[1]
+            if not re.search(output_file, '\.(?:mp4|webm)$'):
+                output_file += '.mp4'
             start = None if len(tokens) < 3 else parse_seconds(tokens[2])
             end = None if len(tokens) < 4 else parse_seconds(tokens[3])
-            yield VideoTask(input_files, tokens[1], start, end)
+
+            if len(tokens) >= 5:
+                extra_data = json.loads(tokens[4])
+            else:
+                extra_data = {}
+
+            description = extra_data.get('description')
+            yield VideoTask(input_files, output_file, start, end, description)
 
 
 def cutvid_commands(vt, indir, outdir):
@@ -95,7 +105,7 @@ def cutvid_commands(vt, indir, outdir):
         if vt.end:
             tmph, tmpfile = tempfile.mkstemp(
                 prefix=os.path.basename(input_files[-1]) + '.',
-                suffix='.end_part.mp4', dir=outdir)
+                suffix='.end_part.mp4' , dir=outdir)
             tmpfiles.append(tmpfile)
             os.close(tmph)
             yield [
@@ -158,7 +168,7 @@ def main():
         '-u', '--upload', action='store_true',
         help='Upload videos after cutting them')
     parser.add_argument(
-        '--upload-config', metavar='FILE',
+        '--upload-config', metavar='FILE', default='~/.config/cutvids.conf',
         help='JSON configuration file for the upload. '
              'A dictionary with the keys email, password and category.')
     args = parser.parse_args()
@@ -190,7 +200,8 @@ def main():
 
     upload_config = {}
     if args.upload_config:
-        with io.open(args.upload_config, 'r', encoding='utf-8') as cfgf:
+        config_fn = os.path.expanduser(args.upload_config)
+        with io.open(config_fn, 'r', encoding='utf-8') as cfgf:
             upload_config.update(json.load(cfgf))
 
     for vt in tasks:
@@ -209,8 +220,10 @@ def main():
             '--email', upload_config['email'],
             '--password', upload_config['password'],
             '-t', title,
-            '--', tmp_fn,
         ]
+        if vt.description is not None:
+            upload_cmd += ['--description', vt.description]
+        upload_cmd += ['--', tmp_fn]
         subprocess.check_call(upload_cmd)
         sys.stdout.write('\n')
         sys.stdout.flush()
