@@ -41,6 +41,9 @@ def parse_tokens(line):
         if line[:1] == '"':
             token, _, line = line[1:].partition('"')
             yield token
+        elif line[:1] == "'":
+            token, _, line = line[1:].partition("'")
+            yield token
         else:
             token, _, line = line.partition(' ')
             assert '"' not in token
