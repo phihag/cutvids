@@ -59,7 +59,7 @@ def parse_video_tasks(fn):
             assert 2 <= len(tokens) <= 5
             input_files = tokens[0].split('+')
             output_file = tokens[1]
-            if not re.search(output_file, '\.(?:mp4|webm)$'):
+            if not re.search(r'\.(?:mp4|webm)$', output_file):
                 output_file += '.mp4'
             start = None if len(tokens) < 3 else parse_seconds(tokens[2])
             end = None if len(tokens) < 4 else parse_seconds(tokens[3])
