@@ -168,12 +168,16 @@ def main():
         '-u', '--upload', action='store_true',
         help='Upload videos after cutting them')
     parser.add_argument(
+        '--indir', metavar='DIR',
+        help='Directory to search source videos in')
+    parser.add_argument(
         '--upload-config', metavar='FILE', default='~/.config/cutvids.conf',
         help='JSON configuration file for the upload. '
              'A dictionary with the keys email, password and category.')
     args = parser.parse_args()
 
     cwd = os.getcwd()
+    indir = cwd if opts.indir is None else opts.indir
     uploading_dir = os.path.join(cwd, 'uploading')
     if not os.path.exists(uploading_dir):
         os.mkdir(uploading_dir)
@@ -185,7 +189,7 @@ def main():
             continue
         sys.stdout.write('%s: Converting\n' % vt.output_file)
         sys.stdout.flush()
-        for c in cutvid_commands(vt, cwd, uploading_dir):
+        for c in cutvid_commands(vt, indir, uploading_dir):
             if args.verbose:
                 sys.stdout.write('  ' + ' '.join(shlex.quote(a) for a in c))
                 sys.stdout.flush()
