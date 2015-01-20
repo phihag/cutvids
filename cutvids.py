@@ -177,7 +177,7 @@ def main():
     args = parser.parse_args()
 
     cwd = os.getcwd()
-    indir = cwd if opts.indir is None else opts.indir
+    indir = cwd if args.indir is None else args.indir
     uploading_dir = os.path.join(cwd, 'uploading')
     if not os.path.exists(uploading_dir):
         os.mkdir(uploading_dir)
