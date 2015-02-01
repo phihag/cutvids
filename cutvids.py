@@ -26,10 +26,14 @@ class FileNotFoundError(BaseException):
 def parse_seconds(token):
     if token == '-':
         return None
-    m = re.match(r'(?:(?P<minutes>[0-9]+):)?(?P<seconds>[0-9]+)$', token)
-    res = int(m.group('seconds'))
+    m = re.match(
+        r'(?:(?:(?P<hours>[0-9]+):)?(?P<minutes>[0-9]+):)?(?P<secs>[0-9]+)$',
+        token)
+    res = int(m.group('secs'))
     if m.group('minutes'):
         res += 60 * int(m.group('minutes'))
+    if m.group('hours'):
+        res += 60 * 60 * int(m.group('hours'))
     return res
 
 
