@@ -92,7 +92,7 @@ def cutvid_commands(vt, indir, outdir):
                 'mv', '--', output_fn + '.part', output_fn,
             ]
             return
-    
+
         if vt.start:
             tmph, tmpfile = tempfile.mkstemp(
                 prefix=os.path.basename(input_files[0]) + '.',
@@ -109,7 +109,7 @@ def cutvid_commands(vt, indir, outdir):
         if vt.end:
             tmph, tmpfile = tempfile.mkstemp(
                 prefix=os.path.basename(input_files[-1]) + '.',
-                suffix='.end_part.mp4' , dir=outdir)
+                suffix='.end_part.mp4', dir=outdir)
             tmpfiles.append(tmpfile)
             os.close(tmph)
             yield [
