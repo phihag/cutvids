@@ -98,12 +98,30 @@ def cutvid_commands(vt, indir, outdir):
     input_files = [find_file(indir, f) for f in vt.input_files]
     output_fn = os.path.join(outdir, vt.output_file)
     tmpfiles = []
+
+    def _concat_cmd(in_fns, out_fn):
+        concat_fn = out_fn + '.concat_list.txt'
+        concat_str = ('\n'.join(
+            "file '%s'" % sf for sf in segment_files)) + '\n\n'
+        tmpfiles.append(concat_fn)
+        with io.open(concat_fn, 'w', encoding='utf-8') as concat_f:
+            concat_f.write(concat_str)
+
+        return [
+            'ffmpeg', '-y',
+            '-f', 'concat', '-i', concat_fn,
+            '-c', 'copy', '-f', 'mp4',
+            out_fn,
+        ]
+
     try:
         if len(vt.segments) > 1:
-            if len(input_files) != 1:
-                raise NotImplementedError(
-                    'At the moment, only one input file is supported '
-                    'when segments are in use')
+            if len(input_files) > 1:
+                inf = output_fn + '.whole'
+                tmpfiles.append(inf)
+                yield _concat_cmd(input_files, inf)
+            else:
+                inf = input_files[0]
 
             segment_files = []
             for segment_num, s in enumerate(vt.segments):
@@ -126,19 +144,7 @@ def cutvid_commands(vt, indir, outdir):
                     ['-c', 'copy', '-f', 'mp4',
                      segment_fn])
 
-            concat_fn = output_fn + '.concat_list.txt'
-            concat_str = ('\n'.join(
-                "file '%s'" % sf for sf in segment_files)) + '\n\n'
-            tmpfiles.append(concat_fn)
-            with io.open(concat_fn, 'w', encoding='utf-8') as concat_f:
-                concat_f.write(concat_str)
-
-            yield [
-                'ffmpeg', '-y',
-                '-f', 'concat', '-i', concat_fn,
-                '-c', 'copy', '-f', 'mp4',
-                output_fn + '.part',
-            ]
+            yield _concat_cmd(segment_files, output_fn + '.part')
             yield [
                 'mv', '--', output_fn + '.part', output_fn,
             ]
