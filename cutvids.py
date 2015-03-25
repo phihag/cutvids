@@ -260,17 +260,17 @@ def main():
             if args.verbose:
                 sys.stdout.write('%s: Conversion done.\n' % vt.output_file)
             continue
-        sys.stdout.write('%s: Converting\n' % vt.output_file)
+        sys.stdout.write('%s: Converting' % vt.output_file)
         sys.stdout.flush()
         for c in cutvid_commands(vt, indir, uploading_dir):
             if args.verbose:
-                sys.stdout.write('  ' + ' '.join(shlex.quote(a) for a in c))
+                sys.stdout.write('\n  ' + ' '.join(shlex.quote(a) for a in c))
                 sys.stdout.flush()
             if not args.dry_run:
                 subprocess.check_output(
                     c, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
-            sys.stdout.write('\n')
-            sys.stdout.flush()
+        sys.stdout.write('\n')
+        sys.stdout.flush()
 
     if not args.upload:
         return
