@@ -5,6 +5,7 @@ from __future__ import unicode_literals, print_function
 
 import argparse
 import collections
+import errno
 import io
 import json
 import os
@@ -16,7 +17,11 @@ import tempfile
 
 
 VideoTask = collections.namedtuple(
-    'VideoTask', ('input_files', 'output_file', 'start', 'end', 'description'))
+    'VideoTask', ('input_files', 'output_file', 'description', 'segments'))
+
+
+Segment = collections.namedtuple(
+    'Segment', ('start', 'end'))
 
 
 class FileNotFoundError(BaseException):
@@ -42,6 +47,8 @@ def parse_tokens(line):
         line = line.strip()
         if not line:
             break
+        if line.startswith('#'):
+            continue
         if line[:1] == '"':
             token, _, line = line[1:].partition('"')
             yield token
@@ -74,7 +81,17 @@ def parse_video_tasks(fn):
                 extra_data = {}
 
             description = extra_data.get('description')
-            yield VideoTask(input_files, output_file, start, end, description)
+            segments_in = extra_data.get('segments')
+            if segments_in:
+                assert not start
+                assert not end
+                segments = [Segment(
+                    parse_seconds(s['start']), parse_seconds(s['end']))
+                    for s in segments_in]
+            else:
+                segments = [Segment(start, end)]
+            yield VideoTask(
+                input_files, output_file, description, segments)
 
 
 def cutvid_commands(vt, indir, outdir):
@@ -82,10 +99,58 @@ def cutvid_commands(vt, indir, outdir):
     output_fn = os.path.join(outdir, vt.output_file)
     tmpfiles = []
     try:
-        if len(input_files) == 1 and vt.start and vt.end:
+        if len(vt.segments) > 1:
+            if len(input_files) != 1:
+                raise NotImplementedError(
+                    'At the moment, only one input file is supported '
+                    'when segments are in use')
+
+            segment_files = []
+            for segment_num, s in enumerate(vt.segments):
+                segment_fn = output_fn + '.segment%d' % segment_num
+                tmpfiles.append(segment_fn)
+                segment_files.append(segment_fn)
+                ffmpeg_opts = []
+                if s.start is not None:
+                    ffmpeg_opts += ['-ss', '%d' % s.start]
+                    if s.end is not None:
+                        assert s.end > s.start
+                        ffmpeg_opts += ['-t', '%d' % (s.end - s.start)]
+                elif s.end is not None:
+                    ffmpeg_opts += ['-t', '%d' % s.end]
+
+                tmpfiles.append(segment_fn)
+                yield ([
+                    'ffmpeg', '-i', input_files[0], '-y'] +
+                    ffmpeg_opts +
+                    ['-c', 'copy', '-f', 'mp4',
+                     segment_fn])
+
+            concat_fn = output_fn + '.concat_list.txt'
+            concat_str = ('\n'.join(
+                "file '%s'" % sf for sf in segment_files)) + '\n\n'
+            tmpfiles.append(concat_fn)
+            with io.open(concat_fn, 'w', encoding='utf-8') as concat_f:
+                concat_f.write(concat_str)
+
+            yield [
+                'ffmpeg', '-y',
+                '-f', 'concat', '-i', concat_fn,
+                '-c', 'copy', '-f', 'mp4',
+                output_fn + '.part',
+            ]
+            yield [
+                'mv', '--', output_fn + '.part', output_fn,
+            ]
+            return
+
+        # Only 1 segment, use simpler calls
+        start = vt.segments[0].start
+        end = vt.segments[0].end
+        if len(input_files) == 1 and start and end:
             yield [
                 'ffmpeg', '-i', input_files[0], '-y',
-                '-ss', '%d' % vt.start, '-t', '%d' % (vt.end - vt.start),
+                '-ss', '%d' % start, '-t', '%d' % (end - start),
                 '-c', 'copy', '-f', 'mp4',
                 output_fn + '.part']
             yield [
@@ -93,7 +158,7 @@ def cutvid_commands(vt, indir, outdir):
             ]
             return
 
-        if vt.start:
+        if start:
             tmph, tmpfile = tempfile.mkstemp(
                 prefix=os.path.basename(input_files[0]) + '.',
                 suffix='.first_part.mp4', dir=outdir)
@@ -101,12 +166,12 @@ def cutvid_commands(vt, indir, outdir):
             os.close(tmph)
             yield [
                 'ffmpeg', '-i', input_files[0], '-y',
-                '-ss', '%d' % vt.start,
+                '-ss', '%d' % start,
                 '-c', 'copy', '-f', 'mp4',
                 tmpfile,
             ]
             input_files[0] = tmpfile
-        if vt.end:
+        if end:
             tmph, tmpfile = tempfile.mkstemp(
                 prefix=os.path.basename(input_files[-1]) + '.',
                 suffix='.end_part.mp4', dir=outdir)
@@ -114,7 +179,7 @@ def cutvid_commands(vt, indir, outdir):
             os.close(tmph)
             yield [
                 'ffmpeg', '-i', input_files[-1], '-y',
-                '-t', '%d' % vt.end,
+                '-t', '%d' % end,
                 '-c', 'copy', '-f', 'mp4',
                 tmpfile,
             ]
@@ -140,7 +205,11 @@ def cutvid_commands(vt, indir, outdir):
             ]
     finally:
         for fn in tmpfiles:
-            os.remove(fn)
+            try:
+                os.remove(fn)
+            except OSError as ose:
+                if ose.errno != errno.ENOENT:
+                    raise
 
     yield [
         'mv', '--', output_fn + '.part', output_fn,
