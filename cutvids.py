@@ -234,6 +234,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'index_file', metavar='FILE',
+        nargs='?', default='./renames',
         help='Description of videos, one per line. '
              'Format: Source-videos(separated with +) "destination video name"'
              ' [offset in first video, - for none] [end offset in last video]')
@@ -245,7 +246,7 @@ def main():
         help='Print out more information')
     parser.add_argument(
         '-u', '--upload', action='store_true',
-        help='Upload videos after cutting them')
+        help='Upload videos to YouTube after cutting them')
     parser.add_argument(
         '--indir', metavar='DIR',
         help='Directory to search source videos in')
