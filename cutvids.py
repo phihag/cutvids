@@ -70,7 +70,7 @@ def parse_video_tasks(fn):
             assert 2 <= len(tokens) <= 5
             input_files = tokens[0].split('+')
             output_file = tokens[1]
-            if not re.search(r'\.(?:mp4|webm)$', output_file):
+            if not re.search(r'\.(?:mp4|webm|ogv)$', output_file):
                 output_file += '.mp4'
             start = None if len(tokens) < 3 else parse_seconds(tokens[2])
             end = None if len(tokens) < 4 else parse_seconds(tokens[3])
@@ -99,10 +99,12 @@ def cutvid_commands(vt, indir, outdir):
     output_fn = os.path.join(outdir, vt.output_file)
     tmpfiles = []
 
+    ext = os.path.splitext(vt.output_file)[1]
+
     def _concat_cmd(in_fns, out_fn):
         concat_fn = out_fn + '.concat_list.txt'
         concat_str = ('\n'.join(
-            "file '%s'" % sf for sf in segment_files)) + '\n\n'
+            "file '%s'" % infn for infn in in_fns)) + '\n\n'
         tmpfiles.append(concat_fn)
         with io.open(concat_fn, 'w', encoding='utf-8') as concat_f:
             concat_f.write(concat_str)
@@ -110,14 +112,14 @@ def cutvid_commands(vt, indir, outdir):
         return [
             'ffmpeg', '-y',
             '-f', 'concat', '-i', concat_fn,
-            '-c', 'copy', '-f', 'mp4',
+            '-c', 'copy',
             out_fn,
         ]
 
     try:
         if len(vt.segments) > 1:
             if len(input_files) > 1:
-                inf = output_fn + '.whole'
+                inf = output_fn + '.whole%s' % ext
                 tmpfiles.append(inf)
                 yield _concat_cmd(input_files, inf)
             else:
@@ -125,7 +127,7 @@ def cutvid_commands(vt, indir, outdir):
 
             segment_files = []
             for segment_num, s in enumerate(vt.segments):
-                segment_fn = output_fn + '.segment%d' % segment_num
+                segment_fn = output_fn + '.segment%d%s' % (segment_num, ext)
                 tmpfiles.append(segment_fn)
                 segment_files.append(segment_fn)
                 ffmpeg_opts = []
@@ -141,12 +143,12 @@ def cutvid_commands(vt, indir, outdir):
                 yield ([
                     'ffmpeg', '-i', input_files[0], '-y'] +
                     ffmpeg_opts +
-                    ['-c', 'copy', '-f', 'mp4',
+                    ['-c', 'copy',
                      segment_fn])
 
-            yield _concat_cmd(segment_files, output_fn + '.part')
+            yield _concat_cmd(segment_files, output_fn + '.part%s' % ext)
             yield [
-                'mv', '--', output_fn + '.part', output_fn,
+                'mv', '--', output_fn + '.part%s' % ext, output_fn,
             ]
             return
 
@@ -157,42 +159,36 @@ def cutvid_commands(vt, indir, outdir):
             yield [
                 'ffmpeg', '-i', input_files[0], '-y',
                 '-ss', '%d' % start, '-t', '%d' % (end - start),
-                '-c', 'copy', '-f', 'mp4',
-                output_fn + '.part']
+                '-c', 'copy',
+                output_fn + '.part%s' % ext]
             yield [
-                'mv', '--', output_fn + '.part', output_fn,
+                'mv', '--', output_fn + '.part%s' % ext, output_fn,
             ]
             return
 
         if start:
-            tmph, tmpfile = tempfile.mkstemp(
-                prefix=os.path.basename(input_files[0]) + '.',
-                suffix='.first_part.mp4', dir=outdir)
+            tmpfile = output_fn + '.first_part%s' % ext
             tmpfiles.append(tmpfile)
-            os.close(tmph)
             yield [
                 'ffmpeg', '-i', input_files[0], '-y',
                 '-ss', '%d' % start,
-                '-c', 'copy', '-f', 'mp4',
+                '-c', 'copy',
                 tmpfile,
             ]
             input_files[0] = tmpfile
         if end:
-            tmph, tmpfile = tempfile.mkstemp(
-                prefix=os.path.basename(input_files[-1]) + '.',
-                suffix='.end_part.mp4', dir=outdir)
+            tmpfile = output_fn + '.end_part%s' % ext
             tmpfiles.append(tmpfile)
-            os.close(tmph)
             yield [
                 'ffmpeg', '-i', input_files[-1], '-y',
                 '-t', '%d' % end,
-                '-c', 'copy', '-f', 'mp4',
+                '-c', 'copy',
                 tmpfile,
             ]
             input_files[-1] = tmpfile
         if len(input_files) == 1:
             yield [
-                'cp', '--', input_files[0], output_fn + '.part',
+                'cp', '--', input_files[0], output_fn + '.part%s' % ext,
             ]
         else:
             tmph, tmpfile = tempfile.mkstemp(
@@ -206,8 +202,8 @@ def cutvid_commands(vt, indir, outdir):
             yield [
                 'ffmpeg', '-y',
                 '-f', 'concat', '-i', tmpfile,
-                '-c', 'copy', '-f', 'mp4',
-                output_fn + '.part',
+                '-c', 'copy',
+                output_fn + '.part%s' % ext,
             ]
     finally:
         for fn in tmpfiles:
@@ -218,7 +214,7 @@ def cutvid_commands(vt, indir, outdir):
                     raise
 
     yield [
-        'mv', '--', output_fn + '.part', output_fn,
+        'mv', '--', output_fn + '.part%s' % ext, output_fn,
     ]
 
 
