@@ -17,7 +17,8 @@ import tempfile
 
 
 VideoTask = collections.namedtuple(
-    'VideoTask', ('input_files', 'output_file', 'description', 'segments'))
+    'VideoTask',
+    ('input_files', 'output_file', 'description', 'segments', 'boost_volume'))
 
 
 Segment = collections.namedtuple(
@@ -45,8 +46,6 @@ def parse_seconds(token):
 def parse_tokens(line):
     while line:
         line = line.strip()
-        if not line:
-            break
         if line.startswith('#'):
             continue
         if line[:1] == '"':
@@ -65,7 +64,7 @@ def parse_video_tasks(fn):
     with io.open(fn, encoding='utf-8') as inf:
         for line in inf:
             if not line.strip() or line.startswith('#'):
-                break
+                continue
             tokens = list(parse_tokens(line))
             assert 2 <= len(tokens) <= 5
             input_files = tokens[0].split('+')
@@ -91,7 +90,8 @@ def parse_video_tasks(fn):
             else:
                 segments = [Segment(start, end)]
             yield VideoTask(
-                input_files, output_file, description, segments)
+                input_files, output_file, description, segments,
+                extra_data.get('boost_volume'))
 
 
 def cutvid_commands(vt, indir, outdir):
@@ -147,12 +147,25 @@ def cutvid_commands(vt, indir, outdir):
                      segment_fn])
 
             yield _concat_cmd(segment_files, output_fn + '.part%s' % ext)
+            if vt.boost_volume:
+                yield [
+                    'mv', '--', output_fn + '.part%s' % ext,
+                    output_fn + '.filter_input%s' % ext,
+                ]
+                tmpfiles.append(output_fn + '.filter_input%s' % ext)
+                yield ([
+                    'ffmpeg', '-i', output_fn + '.filter_input%s' % ext,
+                    '-y'] +
+                    ffmpeg_opts +
+                    ['-c:v', 'copy', '-af', 'volume=%s' % vt.boost_volume,
+                     output_fn + '.part%s' % ext])
             yield [
                 'mv', '--', output_fn + '.part%s' % ext, output_fn,
             ]
             return
 
         # Only 1 segment, use simpler calls
+        assert not vt.boost_volume, 'boost_volume not supported here'
         start = vt.segments[0].start
         end = vt.segments[0].end
         if len(input_files) == 1 and start and end:
@@ -250,6 +263,9 @@ def main():
         '--upload-config', metavar='FILE', default='~/.config/cutvids.conf',
         help='JSON configuration file for the upload. '
              'A dictionary with the keys email, password and category.')
+    parser.add_argument(
+        '--show-tasks', action='store_true',
+        help='Show the video tasks and exit')
     args = parser.parse_args()
 
     cwd = os.getcwd()
@@ -258,6 +274,12 @@ def main():
     if not os.path.exists(uploading_dir):
         os.mkdir(uploading_dir)
     tasks = list(parse_video_tasks(args.index_file))
+
+    if args.show_tasks:
+        for t in tasks:
+            print(t)
+        return 0
+
     for vt in tasks:
         if is_uploaded(cwd, vt) or is_cut(uploading_dir, vt):
             if args.verbose:
