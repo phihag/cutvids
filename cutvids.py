@@ -210,7 +210,7 @@ def cutvid_commands(vt, indir, outdir):
             concat_str = ('\n'.join(
                 "file '%s'" % inf for inf in input_files)) + '\n\n'
             tmpf = os.fdopen(tmph, mode='r+b')
-            tmpf.write(concat_str.encode('ascii'))
+            tmpf.write(concat_str.encode('utf-8'))
             tmpf.close()
             yield [
                 'ffmpeg', '-y',
