@@ -18,7 +18,8 @@ import tempfile
 
 VideoTask = collections.namedtuple(
     'VideoTask',
-    ('input_files', 'output_file', 'description', 'segments', 'boost_volume'))
+    ('input_files', 'output_file', 'description', 'segments', 'boost_volume',
+     'unlisted'))
 
 
 Segment = collections.namedtuple(
@@ -79,6 +80,7 @@ def parse_video_tasks(fn):
             else:
                 extra_data = {}
 
+            unlisted = extra_data.get('unlisted')
             description = extra_data.get('description')
             segments_in = extra_data.get('segments')
             if segments_in:
@@ -325,6 +327,8 @@ def main():
         ]
         if vt.description is not None:
             upload_cmd += ['--description', vt.description]
+        if vt.unlisted:
+            upload_cmd += ['--unlisted']
         upload_cmd += ['--', tmp_fn]
         subprocess.check_call(upload_cmd)
         sys.stdout.write('\n')
