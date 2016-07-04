@@ -113,6 +113,7 @@ def cutvid_commands(vt, indir, outdir):
 
         return [
             'ffmpeg', '-y',
+            '-safe', '0',  # because we use absolute paths at the moment
             '-f', 'concat', '-i', concat_fn,
             '-c', 'copy',
             out_fn,
@@ -172,9 +173,11 @@ def cutvid_commands(vt, indir, outdir):
         end = vt.segments[0].end
         if len(input_files) == 1 and start and end:
             yield [
-                'ffmpeg', '-i', input_files[0], '-y',
-                '-ss', '%d' % start, '-t', '%d' % (end - start),
+                'ffmpeg',
+                '-ss', '%d' % start,
+                '-i', input_files[0], '-y',
                 '-c', 'copy',
+                '-t', '%d' % (end - start),
                 output_fn + '.part%s' % ext]
             yield [
                 'mv', '--', output_fn + '.part%s' % ext, output_fn,
@@ -294,8 +297,15 @@ def main():
                 sys.stdout.write('\n  ' + ' '.join(shlex.quote(a) for a in c))
                 sys.stdout.flush()
             if not args.dry_run:
-                subprocess.check_output(
-                    c, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
+                p = subprocess.Popen(
+                    c, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+                stdout, stderr = p.communicate()
+                if p.returncode != 0:
+                    sys.stdout.write('\n')
+                    sys.stdout.flush()
+                    sys.stdout.buffer.write(stderr)
+                    sys.stdout.buffer.flush()
+                    raise OSError('ffmpeg failed, see output above')
         sys.stdout.write('\n')
         sys.stdout.flush()
 
