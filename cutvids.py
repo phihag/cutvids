@@ -244,6 +244,32 @@ def is_cut(outdir, vt):
     return os.path.exists(os.path.join(outdir, vt.output_file))
 
 
+def find_upload_bin():
+    for candidate in ('youtube_upload', 'youtube-upload', 'yt-upload'):
+        try:
+            output_bytes = subprocess.check_output(['which', candidate])
+            return output_bytes.decode().strip()
+        except subprocess.CalledProcessError:
+            continue
+    raise SystemError('Cannot find youtube_upload!')
+
+
+def calc_upload_cmd(upload_config, title, vt, tmp_fn):
+    res = [
+        find_upload_bin(),
+        '--category', upload_config['category'],
+        '--email', upload_config['email'],
+        '--password', upload_config['password'],
+        '-t', title,
+    ]
+    if vt.description is not None:
+        res += ['--description', vt.description]
+    if vt.unlisted:
+        res += ['--unlisted']
+    res += ['--', tmp_fn]
+    return res
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -271,7 +297,19 @@ def main():
     parser.add_argument(
         '--show-tasks', action='store_true',
         help='Show the video tasks and exit')
+    parser.add_argument(
+        '--find-upload-bin', action='store_true',
+        help='Find youtube-upload and exit')
     args = parser.parse_args()
+
+    if args.find_upload_bin:
+        try:
+            bin_path = find_upload_bin()
+            print('youtube_upload is at %s' % bin_path)
+            return 0
+        except SystemError as se:
+            sys.stderr.write(se.args[0] + '\n')
+            return 1
 
     cwd = os.getcwd()
     indir = cwd if args.indir is None else args.indir
@@ -328,18 +366,7 @@ def main():
         sys.stdout.flush()
         tmp_fn = os.path.join(uploading_dir, vt.output_file)
         title = os.path.splitext(vt.output_file)[0]
-        upload_cmd = [
-            'youtube_upload',
-            '--category', upload_config['category'],
-            '--email', upload_config['email'],
-            '--password', upload_config['password'],
-            '-t', title,
-        ]
-        if vt.description is not None:
-            upload_cmd += ['--description', vt.description]
-        if vt.unlisted:
-            upload_cmd += ['--unlisted']
-        upload_cmd += ['--', tmp_fn]
+        upload_cmd = calc_upload_cmd(upload_config, title, vt, tmp_fn)
         subprocess.check_call(upload_cmd)
         sys.stdout.write('\n')
         sys.stdout.flush()
@@ -362,4 +389,4 @@ def find_file(root_dir, basename):
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
