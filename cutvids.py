@@ -19,7 +19,7 @@ import tempfile
 VideoTask = collections.namedtuple(
     'VideoTask',
     ('input_files', 'output_file', 'description', 'segments', 'boost_volume',
-     'unlisted'))
+     'privacy'))
 
 
 Segment = collections.namedtuple(
@@ -80,7 +80,7 @@ def parse_video_tasks(fn):
             else:
                 extra_data = {}
 
-            unlisted = extra_data.get('unlisted')
+            privacy = extra_data.get('privacy')
             description = extra_data.get('description')
             segments_in = extra_data.get('segments')
             if segments_in:
@@ -93,7 +93,7 @@ def parse_video_tasks(fn):
                 segments = [Segment(start, end)]
             yield VideoTask(
                 input_files, output_file, description, segments,
-                extra_data.get('boost_volume'), unlisted)
+                extra_data.get('boost_volume'), privacy)
 
 
 def cutvid_commands(vt, indir, outdir):
@@ -255,18 +255,39 @@ def find_upload_bin():
 
 
 def calc_upload_cmd(upload_config, title, vt, tmp_fn):
-    res = [
-        find_upload_bin(),
-        '--category', upload_config['category'],
-        '--email', upload_config['email'],
-        '--password', upload_config['password'],
-        '-t', title,
-    ]
-    if vt.description is not None:
-        res += ['--description', vt.description]
-    if vt.unlisted:
-        res += ['--unlisted']
-    res += ['--', tmp_fn]
+    binpath = find_upload_bin()
+    if binpath.endswith('youtube_upload'):  # old version?
+        res = [
+            binpath,
+            '--category', upload_config['category'],
+            '--email', upload_config['email'],
+            '--password', upload_config['password'],
+            '-t', title,
+        ]
+        if vt.privacy:
+            if vt.privacy == 'public':
+                res += ['--public']
+            elif vt.privacy == 'private':
+                res += ['--private']
+            elif vt.privacy == 'unlisted':
+                res += ['--unlisted']
+            else:
+                raise Exception('Unsupported privacy %r' % vt.privacy)
+        if vt.description is not None:
+            res += ['--description', vt.description]
+        res += ['--', tmp_fn]
+    else:  # https://github.com/tokland/youtube-upload
+        res = [
+            binpath,
+            '--category', upload_config['category'],
+            '-t', title,
+        ]
+        if vt.description is not None:
+            res += ['--description', vt.description]
+        if vt.privacy:
+            res += ['--privacy', vt.privacy]
+        res += ['--', tmp_fn]
+
     return res
 
 
