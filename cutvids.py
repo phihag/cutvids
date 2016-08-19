@@ -94,7 +94,7 @@ def parse_video_tasks(fn):
                 segments = [Segment(start, end)]
             yield VideoTask(
                 input_files, output_file, description, segments,
-                extra_data.get('boost_volume'), privacy)
+                extra_data.get('boost_volume'), privacy, upload)
 
 
 def cutvid_commands(vt, indir, outdir):
