@@ -10,5 +10,7 @@ S1180022.MP4+S1180023.MP4 "KVE 9.11.2014 in Solingen - Jeffrey - Spiel 4.mp4" - 
 # You can pass a JSON object after the last line; with the following keys:
 #  "segments" - a list of objects with keys "start" and "end", specifying the start and end point of the segment
 #  "description" - The description of the video on YouTube
+#  "privacy": "public" or "unlisted" or "private"
+#  "upload": false  to suppress uploading
 # Example:
 S1350001.MP4 "Philipp übt weite Smash-Abwehr (Niesner-Camp März 2015).mp4" - - '{"segments": [{"start": "1:35", "end": "2:33"}, {"start": "13:08", "end": "14:53"}], "description": "Noch deutliches Verbesserungspotential vorhanden; bisher landet alles zwischen einem und drei Metern von der Grundlinie entfernt.\n\nAufgenommen beim Hans Werner Niesner Technik-Camp am 22.3.2015, im Playoff-Hotel Arcadia, Braunschweig.\nhttps://www.facebook.com/pages/H-W-Niesner-Badminton-Camps/126733014070819"}'

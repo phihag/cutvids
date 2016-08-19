@@ -19,7 +19,7 @@ import tempfile
 VideoTask = collections.namedtuple(
     'VideoTask',
     ('input_files', 'output_file', 'description', 'segments', 'boost_volume',
-     'privacy'))
+     'privacy', 'upload'))
 
 
 Segment = collections.namedtuple(
@@ -83,6 +83,7 @@ def parse_video_tasks(fn):
             privacy = extra_data.get('privacy')
             description = extra_data.get('description')
             segments_in = extra_data.get('segments')
+            upload = extra_data.get('upload', True)
             if segments_in:
                 assert not start
                 assert not end
@@ -378,6 +379,8 @@ def main():
             upload_config.update(json.load(cfgf))
 
     for vt in tasks:
+        if not vt.upload:
+            continue
         if is_uploaded(cwd, vt):
             if args.verbose:
                 sys.stdout.write('%s: Already uploaded.\n' % vt.output_file)
