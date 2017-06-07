@@ -19,7 +19,7 @@ import tempfile
 VideoTask = collections.namedtuple(
     'VideoTask',
     ('input_files', 'output_file', 'description', 'segments', 'boost_volume',
-     'privacy', 'upload'))
+     'privacy', 'upload', 'lossy'))
 
 
 Segment = collections.namedtuple(
@@ -83,6 +83,7 @@ def parse_video_tasks(fn):
             privacy = extra_data.get('privacy')
             description = extra_data.get('description')
             segments_in = extra_data.get('segments')
+            lossy = extra_data.get('lossy', False)
             upload = extra_data.get('upload', True)
             if segments_in:
                 assert not start
@@ -94,7 +95,8 @@ def parse_video_tasks(fn):
                 segments = [Segment(start, end)]
             yield VideoTask(
                 input_files, output_file, description, segments,
-                extra_data.get('boost_volume'), privacy, upload)
+                extra_data.get('boost_volume'), privacy, upload,
+                lossy)
 
 
 def cutvid_commands(vt, indir, outdir):
@@ -168,20 +170,26 @@ def cutvid_commands(vt, indir, outdir):
             ]
             return
 
+        codec = (
+            ['-preset', 'slow', '-crf', '22']
+            if vt.lossy else
+            ['-c', 'copy']
+        )
+
         # Only 1 segment, use simpler calls
         assert not vt.boost_volume, 'boost_volume not supported here'
         start = vt.segments[0].start
         end = vt.segments[0].end
         if len(input_files) == 1 and start and end:
-            yield [
+            yield ([
                 'ffmpeg',
                 '-noaccurate_seek',
                 '-i', input_files[0], '-y',
-                '-ss', '%d' % start,
-                '-c', 'copy',
+                '-ss', '%d' % start
+                ] + codec + [
                 '-t', '%d' % (end - start),
                 '-avoid_negative_ts', 'make_zero',
-                output_fn + '.part%s' % ext]
+                output_fn + '.part%s' % ext])
             yield [
                 'mv', '--', output_fn + '.part%s' % ext, output_fn,
             ]
@@ -192,8 +200,8 @@ def cutvid_commands(vt, indir, outdir):
             tmpfiles.append(tmpfile)
             yield [
                 'ffmpeg', '-i', input_files[0], '-y',
-                '-ss', '%d' % start,
-                '-c', 'copy',
+                '-ss', '%d' % start
+                ] + codec + [
                 tmpfile,
             ]
             input_files[0] = tmpfile
@@ -202,8 +210,8 @@ def cutvid_commands(vt, indir, outdir):
             tmpfiles.append(tmpfile)
             yield [
                 'ffmpeg', '-i', input_files[-1], '-y',
-                '-t', '%d' % end,
-                '-c', 'copy',
+                '-t', '%d' % end
+                ] + codec + [
                 tmpfile,
             ]
             input_files[-1] = tmpfile
