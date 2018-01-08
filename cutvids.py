@@ -31,13 +31,18 @@ class FileNotFoundError(BaseException):
 
 
 def parse_seconds(token):
+    if token is None:
+        return None
     if token == '-':
         return None
     if isinstance(token, (float, int)):
         return token
     m = re.match(
-        r'(?:(?:(?P<hours>[0-9]+):)?(?P<minutes>[0-9]+):)?(?P<secs>[0-9]+)(?P<subsecs>\.[0-9]*)?$',
+        r'(?:(?:(?P<hours>[0-9]+):)?(?P<minutes>[0-9]+):)?'
+        r'(?P<secs>[0-9]+)(?P<subsecs>\.[0-9]*)?$',
         token)
+    if not m:
+        raise ValueError('Cannot parse time spec %r' % token)
     res = int(m.group('secs'))
     if m.group('minutes'):
         res += 60 * int(m.group('minutes'))

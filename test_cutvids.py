@@ -11,6 +11,7 @@ import cutvids
 class TestCutvids(unittest.TestCase):
     def test_parse_seconds(self):
         self.assertEqual(cutvids.parse_seconds('-'), None)
+        self.assertEqual(cutvids.parse_seconds(None), None)
         self.assertEqual(cutvids.parse_seconds('123'), 123)
         self.assertEqual(cutvids.parse_seconds(123), 123)
         self.assertEqual(cutvids.parse_seconds(123.4), 123.4)
