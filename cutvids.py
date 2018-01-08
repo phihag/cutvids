@@ -33,15 +33,35 @@ class FileNotFoundError(BaseException):
 def parse_seconds(token):
     if token == '-':
         return None
+    if isinstance(token, (float, int)):
+        return token
     m = re.match(
-        r'(?:(?:(?P<hours>[0-9]+):)?(?P<minutes>[0-9]+):)?(?P<secs>[0-9]+)$',
+        r'(?:(?:(?P<hours>[0-9]+):)?(?P<minutes>[0-9]+):)?(?P<secs>[0-9]+)(?P<subsecs>\.[0-9]*)?$',
         token)
     res = int(m.group('secs'))
     if m.group('minutes'):
         res += 60 * int(m.group('minutes'))
     if m.group('hours'):
         res += 60 * 60 * int(m.group('hours'))
+    if m.group('subsecs'):
+        res += float(m.group('subsecs'))
     return res
+
+
+def parse_segment(s):
+    start = None
+    end = None
+    try:
+        start = s.get('start')
+        end = s.get('end')
+    except AttributeError:  # not a dict, maybe a list?
+        if len(s) == 2:
+            start, end = s
+
+    if start is not None or end is not None:
+        return Segment(parse_seconds(start), parse_seconds(end))
+
+    raise ValueError('Cannot parse segment %r' % s)
 
 
 def parse_tokens(line):
@@ -88,9 +108,7 @@ def parse_video_tasks(fn):
             if segments_in:
                 assert not start
                 assert not end
-                segments = [Segment(
-                    parse_seconds(s['start']), parse_seconds(s['end']))
-                    for s in segments_in]
+                segments = list(map(parse_segment, segments_in))
             else:
                 segments = [Segment(start, end)]
             yield VideoTask(
