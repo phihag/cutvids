@@ -286,7 +286,7 @@ def is_cut(outdir, vt):
 
 
 def find_upload_bin():
-    for candidate in ('youtube_upload', 'youtube-upload', 'yt-upload'):
+    for candidate in ('youtube_upload', 'youtube-upload', 'yt-upload', 'yupload'):
         try:
             output_bytes = subprocess.check_output(['which', candidate])
             return output_bytes.decode().strip()
