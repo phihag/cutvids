@@ -169,8 +169,14 @@ def cutvid_commands(vt, indir, outdir):
                     ffmpeg_opts += ['-t', '%d' % s.end]
 
                 tmpfiles.append(segment_fn)
+
+                try:
+                    in_fn = s.get('file', input_files[0])
+                except AttributeError:  # list instead of dict
+                    in_fn = input_files[0]
+
                 yield ([
-                    'ffmpeg', '-i', input_files[0], '-y'] +
+                    'ffmpeg', '-i', in_fn, '-y'] +
                     ffmpeg_opts +
                     ['-c', 'copy',
                      segment_fn])
@@ -327,13 +333,25 @@ def calc_upload_cmd(upload_config, title, vt, tmp_fn):
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument(
         'index_file', metavar='FILE',
         nargs='?', default='./renames',
-        help='Description of videos, one per line. '
+        help='Description of videos, one per line.\n'
              'Format: Source-videos(separated with +) "destination video name"'
-             ' [offset in first video, - for none] [end offset in last video]')
+             ' [offset in first video, - for none] '
+             '[end offset in last video, - for none]\n'
+             'You can pass a JSON object in single quotes after the last item;'
+             'with the following keys:\n'
+             '"segments" - a list of objects with keys:\n'
+             '   "start": Time in original video when to start (i.e. "5:23")\n'
+             '   "end": Endtime of the segment in the source video.\n'
+             '   "file": input file for this segment (optional).\n'
+             '"description" - The description of the video on YouTube\n'
+             '"privacy": "public" or "unlisted" or "private"\n'
+             '"upload": false  to suppress uploading\n'
+    )
     parser.add_argument(
         '--dry-run', action='store_true',
         help='Print commands instead of executing them')
