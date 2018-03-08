@@ -16,6 +16,7 @@ class TestCutvids(unittest.TestCase):
         self.assertEqual(cutvids.parse_seconds(123), 123)
         self.assertEqual(cutvids.parse_seconds(123.4), 123.4)
         self.assertEqual(cutvids.parse_seconds('123.4'), 123.4)
+        self.assertEqual(cutvids.parse_seconds('1:1:40'), 3700)
 
     def test_parse_segment(self):
         self.assertEqual(cutvids.parse_segment({
