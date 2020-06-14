@@ -212,12 +212,10 @@ def cutvid_commands(vt, indir, outdir):
         if len(input_files) == 1 and start and end:
             yield ([
                 'ffmpeg',
-                '-noaccurate_seek',
                 '-i', input_files[0], '-y',
                 '-ss', '%d' % start
                 ] + codec + [
                 '-t', '%d' % (end - start),
-                '-avoid_negative_ts', 'make_zero',
                 output_fn + '.part%s' % ext])
             yield [
                 'mv', '--', output_fn + '.part%s' % ext, output_fn,
