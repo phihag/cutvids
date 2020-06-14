@@ -200,7 +200,7 @@ def cutvid_commands(vt, indir, outdir):
             return
 
         codec = (
-            ['-preset', 'slow', '-crf', '17']
+            ['-preset', 'slow', '-crf', '17', '-c:v', 'libx265', '-c:a', 'aac', '-b:a', '192k']
             if vt.lossy else
             ['-c', 'copy']
         )
